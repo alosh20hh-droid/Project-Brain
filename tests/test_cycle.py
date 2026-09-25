@@ -19,3 +19,27 @@ def test_full_cycle_accepts_verified_result():
     out=asyncio.run(ProjectCycle(Planner(), router, EvidenceVerifier()).run_once({}, "test"))
     assert out.status == "accepted"
     assert out.state["last_verified"] is True
+
+from project_brain.contracts import RiskLevel
+from project_brain.approval import ApprovalRequired
+from project_brain.approvals import ApprovalStore,ApprovalRequest,ApprovalGateway
+import pytest
+
+class SensitivePlanner(Planner):
+ async def next_request(self,state):
+  return ExecutionRequest(task_id="s1",goal="sensitive-action",risk=RiskLevel.SENSITIVE)
+
+def test_sensitive_cycle_requires_matching_persisted_approval():
+ router=ExecutionRouter();router.register("test",Executor())
+ store=ApprovalStore();gateway=ApprovalGateway(store)
+ cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
+ with pytest.raises(ApprovalRequired):
+  asyncio.run(cycle.run_once({},"test"))
+ store.create(ApprovalRequest(id="a",task_id="other",action="sensitive-action",reason="test",risk="sensitive"))
+ store.decide("a",True,"owner")
+ with pytest.raises(ApprovalRequired):
+  asyncio.run(cycle.run_once({},"test","a"))
+ store.create(ApprovalRequest(id="b",task_id="s1",action="sensitive-action",reason="test",risk="sensitive"))
+ store.decide("b",True,"owner")
+ out=asyncio.run(cycle.run_once({},"test","b"))
+ assert out.status=="accepted"
