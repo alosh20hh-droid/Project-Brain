@@ -7,6 +7,7 @@ class TaskNode:
  dependencies:set[str]=field(default_factory=set)
  completed:bool=False
  failed:bool=False
+ claimed_by:str|None=None
 
 class TaskGraph:
  def __init__(self)->None:self.nodes:dict[str,TaskNode]={}
@@ -27,4 +28,13 @@ class TaskGraph:
   for task_id in self.nodes:walk(task_id)
  def ready(self)->list[TaskNode]:
   self.validate()
-  return [n for n in self.nodes.values() if not n.completed and not n.failed and all(self.nodes[d].completed for d in n.dependencies)]
+  return [n for n in self.nodes.values() if not n.completed and not n.failed and n.claimed_by is None and all(self.nodes[d].completed for d in n.dependencies)]
+ def claim(self,task_id:str,worker_id:str)->bool:
+  node=self.nodes[task_id]
+  if node.claimed_by is not None or node.completed or node.failed:return False
+  if any(not self.nodes[d].completed for d in node.dependencies):return False
+  node.claimed_by=worker_id;return True
+ def release_claim(self,task_id:str,worker_id:str)->bool:
+  node=self.nodes[task_id]
+  if node.claimed_by!=worker_id:return False
+  node.claimed_by=None;return True
