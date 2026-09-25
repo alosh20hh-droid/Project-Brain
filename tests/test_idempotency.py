@@ -6,3 +6,11 @@ def test_same_action_cannot_be_reserved_twice(tmp_path):
  assert not i.reserve("task:1")
  i.complete("task:1","evidence:1")
  assert i.status("task:1")["status"]=="completed"
+
+
+def test_second_store_cannot_reserve_same_action(tmp_path):
+ db=tmp_path/"brain.db"
+ first=IdempotencyStore(SQLiteProjectStore(db))
+ second=IdempotencyStore(SQLiteProjectStore(db))
+ assert first.reserve("same-action")
+ assert not second.reserve("same-action")
