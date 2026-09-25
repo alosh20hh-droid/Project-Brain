@@ -33,6 +33,6 @@ class SQLiteProjectStore:
   with self.connect() as db:
    cur=db.execute("INSERT OR IGNORE INTO kv(namespace,key,value_json) VALUES(?,?,?)",(namespace,key,raw))
    return cur.rowcount==1
- def get(self,namespace:str,key:str,default:Any=None)->Any:
+ def put_if_absent(self,namespace:str,key:str,value:Any)->bool:\n  raw=json.dumps(value,ensure_ascii=False,sort_keys=True)\n  with self.connect() as db:\n   cur=db.execute("INSERT OR IGNORE INTO kv(namespace,key,value_json) VALUES(?,?,?)",(namespace,key,raw))\n   return cur.rowcount==1\n def get(self,namespace:str,key:str,default:Any=None)->Any:
   with self.connect() as db:row=db.execute("SELECT value_json FROM kv WHERE namespace=? AND key=?",(namespace,key)).fetchone()
   return default if row is None else json.loads(row[0])
