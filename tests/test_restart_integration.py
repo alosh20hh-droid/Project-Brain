@@ -4,7 +4,8 @@ from project_brain.bootstrap import bootstrap
 from project_brain.cycle import CycleOutcome
 
 class IdleCycle:
- async def run_once(self,state,executor_name):return CycleOutcome("idle",state,None,None,None)
+ async def run_once(self,state,executor_name):
+  return CycleOutcome(state=state,request=None,result=None,verification=None,status="idle")
 
 def test_new_process_style_bootstrap_loads_previous_state(tmp_path):
  db=tmp_path/"brain.db"
