@@ -7,8 +7,9 @@ class OneShotCycle:
  def __init__(self):self.calls=0
  async def run_once(self,state,executor_name):
   self.calls+=1
-  if self.calls==1:return CycleOutcome("accepted",{**state,"count":state.get("count",0)+1},None,None,None)
-  return CycleOutcome("idle",state,None,None,None)
+  if self.calls==1:
+   return CycleOutcome(state={**state,"count":state.get("count",0)+1},request=None,result=None,verification=None,status="accepted")
+  return CycleOutcome(state=state,request=None,result=None,verification=None,status="idle")
 
 def test_end_to_end_state_is_persisted_and_resumable(tmp_path):
  db=tmp_path/"brain.db";services=bootstrap(db);cycle=OneShotCycle()
