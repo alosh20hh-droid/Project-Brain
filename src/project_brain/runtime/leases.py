@@ -11,13 +11,16 @@ class Lease:
 class LeaseManager:
  def __init__(self)->None:self._leases:dict[str,Lease]={}
  def claim(self,task_id:str,worker_id:str,seconds:int=120,now:datetime|None=None)->bool:
+  if seconds<=0:raise ValueError("lease duration must be positive")
   now=now or datetime.now(timezone.utc);current=self._leases.get(task_id)
   if current and current.expires_at>now and current.worker_id!=worker_id:return False
   self._leases[task_id]=Lease(task_id,worker_id,now+timedelta(seconds=seconds));return True
  def renew(self,task_id:str,worker_id:str,seconds:int=120,now:datetime|None=None)->bool:
+  if seconds<=0:raise ValueError("lease duration must be positive")
   current=self._leases.get(task_id)
   if not current or current.worker_id!=worker_id:return False
   now=now or datetime.now(timezone.utc)
+  if current.expires_at<=now:return False
   self._leases[task_id]=Lease(task_id,worker_id,now+timedelta(seconds=seconds));return True
  def expired(self,now:datetime|None=None)->list[Lease]:
   now=now or datetime.now(timezone.utc)
