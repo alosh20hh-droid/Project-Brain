@@ -18,3 +18,19 @@ def test_unoffered_tool_is_hard_blocked():
     req=ExecutionRequest(task_id="t",goal="g",allowed_actions=[])
     with pytest.raises(ToolAuthorizationError):
         asyncio.run(router.execute(req,ToolCall("research",{})))
+
+
+async def external(args):
+ return ToolResult(ok=True,summary="external",data=args)
+
+def test_restricted_tool_requires_explicit_action():
+ reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
+ req=ExecutionRequest(task_id="t",goal="g",allowed_actions=["external"])
+ with pytest.raises(ToolAuthorizationError):
+  asyncio.run(ToolRouter(reg).execute(req,ToolCall("external",{})))
+
+def test_restricted_tool_blocks_unapproved_action():
+ reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
+ req=ExecutionRequest(task_id="t",goal="g",allowed_actions=["external"])
+ with pytest.raises(ToolAuthorizationError):
+  asyncio.run(ToolRouter(reg).execute(req,ToolCall("external",{"actions":["delete"]})))
