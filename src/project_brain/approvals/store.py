@@ -34,7 +34,7 @@ class ApprovalStore:
   item=self.get(item_id)
   if item.status in {ApprovalStatus.REJECTED,ApprovalStatus.EXPIRED}:return item
   item.status=ApprovalStatus.EXPIRED;self._save(item);return item
- def consume_and_reserve_operation(self,item_id:str,operation_id:str,task_id:str|None=None,action:str|None=None,amount=None,currency:str|None=None)->bool:
+ def consume_and_reserve_operation(self,item_id:str,operation_id:str,task_id:str|None=None,action:str|None=None,amount=None,currency:str|None=None,request_fingerprint:str|None=None)->bool:
   if not self.store:return False
   now=datetime.now(timezone.utc)
   with self.store.connect() as db:
@@ -51,7 +51,7 @@ class ApprovalStore:
    if db.execute("SELECT 1 FROM kv WHERE namespace='approval_consumed' AND key=?",(item_id,)).fetchone():return False
    if db.execute("SELECT 1 FROM kv WHERE namespace='idempotency' AND key=?",(operation_id,)).fetchone():return False
    db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('approval_consumed',?,?)",(item_id,json.dumps({"consumed_at":now.isoformat()},sort_keys=True)))
-   db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('idempotency',?,?)",(operation_id,json.dumps({"status":"reserved","task_id":item.task_id,"action":item.action,"approval_id":item.id},sort_keys=True)))
+   db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('idempotency',?,?)",(operation_id,json.dumps({"status":"reserved","task_id":item.task_id,"action":item.action,"approval_id":item.id,"request_fingerprint":request_fingerprint},sort_keys=True)))
    return True
  def consumed(self,item_id:str)->bool:
   if self.store:return self.store.get("approval_consumed",item_id) is not None
