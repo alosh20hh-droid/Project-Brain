@@ -39,7 +39,12 @@ class Orchestrator:
     self.runs.save(RunRecord(self.config.run_id,self.config.project_id,"failed",str(index)))
     self.events.publish(Event("orchestrator.failed",{"run_id":self.config.run_id,"index":index,"error_type":type(exc).__name__}));raise
    state=outcome.state
-   version=self.projects.save_state(self.config.project_id,state,expected_version=version)
+   try:
+    version=self.projects.save_state(self.config.project_id,state,expected_version=version)
+   except Exception as exc:
+    self.runs.save(RunRecord(self.config.run_id,self.config.project_id,"failed_persistence",str(index)))
+    self.events.publish(Event("orchestrator.persistence_failed",{"run_id":self.config.run_id,"index":index,"error_type":type(exc).__name__}))
+    raise
    self.runs.save(RunRecord(self.config.run_id,self.config.project_id,outcome.status,str(index)))
    self.events.publish(Event("orchestrator.cycle.finished",{"run_id":self.config.run_id,"index":index,"status":outcome.status}))
    if outcome.status=="idle":break
