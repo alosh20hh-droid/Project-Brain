@@ -49,7 +49,7 @@ def test_sensitive_external_tool_can_run_when_action_is_allowed():
 
 def test_sensitive_tool_is_blocked_without_authorization_proof():
  reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
- req=ExecutionRequest(task_id="t",goal="g",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
+ req=ExecutionRequest(task_id="t",goal="g",operation_id="op-t",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
  with pytest.raises(ToolAuthorizationError,match="authorization proof"):
   asyncio.run(ToolRouter(reg).execute(req,ToolCall("external",{"actions":["read"]})))
 
