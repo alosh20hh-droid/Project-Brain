@@ -18,3 +18,12 @@ def test_approval_cannot_be_reused_for_another_task_or_action():
  assert g.check("a","task-1","pay").allowed
  assert not g.check("a","task-2","pay").allowed
  assert not g.check("a","task-1","delete").allowed
+
+
+def test_approval_and_consumption_survive_restart(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore
+ db=tmp_path/"brain.db"
+ first=ApprovalStore(SQLiteProjectStore(db));first.create(ApprovalRequest(id="persist",task_id="t",action="pay",reason="needed",risk="sensitive"));first.decide("persist",True,"owner")
+ first_gateway=ApprovalGateway(first);assert first_gateway.check("persist","t","pay").allowed;assert first_gateway.consume("persist").allowed
+ second=ApprovalGateway(ApprovalStore(SQLiteProjectStore(db)))
+ assert not second.check("persist","t","pay").allowed
