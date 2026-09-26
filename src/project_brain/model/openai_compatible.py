@@ -30,6 +30,7 @@ class OpenAICompatibleProvider:
    for call in message.get("tool_calls") or []:
     fn=call.get("function") or {};args=fn.get("arguments") or {}
     if isinstance(args,str):args=json.loads(args)
+    if not isinstance(args,dict):raise ValueError("tool arguments must be an object")
     calls.append({"id":call.get("id",""),"name":fn.get("name",""),"arguments":args})
    return ModelResponse(text=text,tool_calls=calls,usage=raw.get("usage") or {},raw=raw)
   except (KeyError,IndexError,TypeError,ValueError,json.JSONDecodeError) as exc:
