@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
-from .cycle import ProjectCycle
+from .cycle import ProjectCycle,GuardrailViolation
 from .approval import ApprovalRequired
 from .execution.router import ReconciliationRequired
 from .persistence import SQLiteProjectStore,RunStore,RunRecord
@@ -26,6 +26,9 @@ class Orchestrator:
   for index in range(self.config.max_cycles):
    self.events.publish(Event("orchestrator.cycle.started",{"run_id":self.config.run_id,"index":index}))
    try:outcome=await self.cycle.run_once(state,self.config.executor_name,approval_id)
+   except GuardrailViolation as exc:
+    self.runs.save(RunRecord(self.config.run_id,self.config.project_id,"blocked_policy",str(index)))
+    self.events.publish(Event("orchestrator.policy_blocked",{"run_id":self.config.run_id,"index":index,"reason":str(exc)}));return state
    except ApprovalRequired as exc:
     self.runs.save(RunRecord(self.config.run_id,self.config.project_id,"blocked_approval",str(index)))
     self.events.publish(Event("orchestrator.blocked",{"run_id":self.config.run_id,"index":index,"reason":str(exc)}));return state
