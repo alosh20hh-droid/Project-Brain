@@ -31,7 +31,9 @@ class ApprovalGateway:
   if self.store.consumed(approval_id):return ApprovalVerdict(False,"approval already consumed")
   return ApprovalVerdict(True,"approved")
 
- def consume(self,approval_id:str)->ApprovalVerdict:
+ def consume(self,approval_id:str,operation_id:str|None=None)->ApprovalVerdict:
+  verdict=self.check(approval_id,operation_id=operation_id)
+  if not verdict.allowed:return verdict
   try:ok=self.store.consume(approval_id)
   except KeyError:return ApprovalVerdict(False,"approval not found")
   return ApprovalVerdict(ok,"consumed" if ok else "approval cannot be consumed")
