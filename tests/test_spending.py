@@ -24,3 +24,14 @@ def test_approved_spend_token_cannot_be_used_twice():
  second=gate.authorize(Decimal("3"),"one",task_id="t",action="buy",currency="USD")
  assert first.allowed
  assert not second.allowed
+
+
+def test_naive_expiry_is_handled_as_utc_not_crash():
+ from datetime import datetime,timedelta,timezone
+ s=ApprovalStore()
+ expired=(datetime.now(timezone.utc)-timedelta(minutes=1)).replace(tzinfo=None).isoformat()
+ s.create(ApprovalRequest(id="expired",task_id="t",action="buy",reason="test",risk="sensitive",amount=1,currency="USD",expires_at=expired))
+ s.decide("expired",True,"owner")
+ verdict=SpendingGate(CostLedger(Decimal("10")),ApprovalGateway(s)).authorize(Decimal("1"),"expired",task_id="t",action="buy",currency="USD")
+ assert not verdict.allowed
+ assert verdict.reason=="approval expired"
