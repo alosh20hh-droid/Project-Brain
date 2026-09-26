@@ -21,7 +21,8 @@ class ApprovalGateway:
    self.store.expire(approval_id);return ApprovalVerdict(False,"approval expired")
   if item.status!=ApprovalStatus.APPROVED:return ApprovalVerdict(False,f"approval is {item.status.value}")
   if task_id is not None and item.task_id!=task_id:return ApprovalVerdict(False,"approval belongs to a different task")
-  if action is not None and item.action!=action:return ApprovalVerdict(False,"approval belongs to a different action")\n  if operation_id is not None and item.operation_id!=operation_id:return ApprovalVerdict(False,"approval belongs to a different operation")
+  if action is not None and item.action!=action:return ApprovalVerdict(False,"approval belongs to a different action")
+  if operation_id is not None and item.operation_id!=operation_id:return ApprovalVerdict(False,"approval belongs to a different operation")
   if amount is not None:
    if item.amount is None:return ApprovalVerdict(False,"approval has no spending amount")
    if amount>Decimal(str(item.amount)):return ApprovalVerdict(False,"amount exceeds approved limit")
