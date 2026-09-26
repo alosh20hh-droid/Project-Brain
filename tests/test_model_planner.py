@@ -56,6 +56,11 @@ def test_planner_context_is_bounded():
 
 @pytest.mark.asyncio
 async def test_planner_redacts_secret_key_variants():
+ from project_brain.model.types import ModelResponse
+ class CaptureProvider:
+  def __init__(self):self.messages=None
+  async def complete(self,messages,tools=None):
+   self.messages=messages;return ModelResponse(text="")
  provider=CaptureProvider()
  planner=JsonModelPlanner(provider)
  await planner.next_request({"access_token":"a","client-secret":"b","database credentials":"c","nested":{"refreshToken":"d"}})
