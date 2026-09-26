@@ -46,3 +46,17 @@ def test_two_stores_cannot_consume_same_approval(tmp_path):
  second=ApprovalStore(SQLiteProjectStore(db))
  assert first.consume("shared")
  assert not second.consume("shared")
+
+
+def test_atomic_operation_reservation_rechecks_amount_and_currency(tmp_path):
+ from decimal import Decimal
+ from project_brain.persistence import SQLiteProjectStore
+ db=tmp_path/"brain.db"
+ store=ApprovalStore(SQLiteProjectStore(db))
+ store.create(ApprovalRequest(id="money",task_id="t",action="buy",operation_id="op-money",reason="needed",risk="sensitive",amount=3,currency="USD"))
+ store.decide("money",True,"owner")
+ gateway=ApprovalGateway(store)
+ assert not gateway.reserve_operation("money","op-money",task_id="t",action="buy",amount=Decimal("4"),currency="USD").allowed
+ assert not gateway.reserve_operation("money","op-money",task_id="t",action="buy",amount=Decimal("3"),currency="EUR").allowed
+ assert gateway.reserve_operation("money","op-money",task_id="t",action="buy",amount=Decimal("3"),currency="USD").allowed
+ assert store.consumed("money")
