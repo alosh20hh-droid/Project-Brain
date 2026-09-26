@@ -4,6 +4,7 @@ from typing import Protocol
 from .contracts import ExecutionRequest,ExecutionResult,VerificationResult,RiskLevel
 from .approval import ApprovalRequired
 from .guardrails import Guardrails
+from .replanner import assess_replan
 
 class GuardrailViolation(RuntimeError):pass
 
@@ -44,4 +45,14 @@ class ProjectCycle:
    result=await self.router.execute(executor_name,request)
   verification=await self.verifier.verify(request,result)
   new_state=await self.planner.learn(state,request,result,verification)
-  return CycleOutcome(new_state,request,result,verification,"accepted" if verification.accepted else "rejected")
+  if verification.accepted:
+   new_state={**new_state,"replan":{"required":False,"reason":"continue current plan"}}
+   status="accepted"
+  else:
+   failures=int(state.get("consecutive_failures",0))+1
+   decision=assess_replan(False,failures>=2,False)
+   new_state={**new_state,"consecutive_failures":failures,"replan":{"required":decision.should_replan,"reason":decision.reason}}
+   status="replan_required"
+  if verification.accepted and state.get("consecutive_failures"):
+   new_state={**new_state,"consecutive_failures":0}
+  return CycleOutcome(new_state,request,result,verification,status)
