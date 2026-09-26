@@ -70,3 +70,18 @@ def test_wrong_scope_cannot_consume_or_burn_approval():
  assert not denied.allowed
  assert not s.consumed("scoped")
  assert g.consume("scoped",task_id="t",action="buy",amount=Decimal("3"),currency="USD",operation_id="op-1").allowed
+
+
+def test_two_persistent_gateways_cannot_authorize_same_operation_twice(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ db=tmp_path/"approval-race.db";base=SQLiteProjectStore(db)
+ first=ApprovalStore(base)
+ first.create(ApprovalRequest(id="race",task_id="t",action="act",operation_id="op-race",reason="needed",risk="sensitive"));first.decide("race",True,"owner")
+ g1=ApprovalGateway(ApprovalStore(SQLiteProjectStore(db)));g2=ApprovalGateway(ApprovalStore(SQLiteProjectStore(db)))
+ results=[
+  g1.reserve_operation("race","op-race",task_id="t",action="act").allowed,
+  g2.reserve_operation("race","op-race",task_id="t",action="act").allowed,
+ ]
+ assert results.count(True)==1
+ assert results.count(False)==1
+ assert IdempotencyStore(SQLiteProjectStore(db)).status("op-race")["status"]=="reserved"
