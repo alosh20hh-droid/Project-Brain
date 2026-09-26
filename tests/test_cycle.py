@@ -30,9 +30,10 @@ class SensitivePlanner(Planner):
  async def next_request(self,state):
   return ExecutionRequest(task_id="s1",operation_id="op:s1:1",goal="sensitive-action",risk=RiskLevel.SENSITIVE)
 
-def test_sensitive_cycle_requires_matching_persisted_approval():
- router=ExecutionRouter();router.register("test",Executor())
- store=ApprovalStore();gateway=ApprovalGateway(store)
+def test_sensitive_cycle_requires_matching_persisted_approval(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ persistent=SQLiteProjectStore(tmp_path/"matching.db");router=ExecutionRouter(IdempotencyStore(persistent));router.register("test",Executor())
+ store=ApprovalStore(persistent);gateway=ApprovalGateway(store)
  cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
  with pytest.raises(ApprovalRequired):
   asyncio.run(cycle.run_once({},"test"))
@@ -52,9 +53,10 @@ def test_sensitive_approval_cannot_authorize_different_operation():
  store.create(ApprovalRequest(id="wrong-op",task_id="s1",operation_id="op:other",action="sensitive-action",reason="test",risk="sensitive"));store.decide("wrong-op",True,"owner")
  with pytest.raises(ApprovalRequired):asyncio.run(cycle.run_once({},"test","wrong-op"))
 
-def test_sensitive_approval_is_consumed_after_one_execution():
- router=ExecutionRouter();router.register("test",Executor())
- store=ApprovalStore();gateway=ApprovalGateway(store);cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
+def test_sensitive_approval_is_consumed_after_one_execution(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ persistent=SQLiteProjectStore(tmp_path/"once.db");router=ExecutionRouter(IdempotencyStore(persistent));router.register("test",Executor())
+ store=ApprovalStore(persistent);gateway=ApprovalGateway(store);cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
  store.create(ApprovalRequest(id="once",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("once",True,"owner")
  asyncio.run(cycle.run_once({},"test","once"))
  with pytest.raises(ApprovalRequired):asyncio.run(cycle.run_once({},"test","once"))
@@ -79,7 +81,7 @@ def test_sensitive_cycle_refuses_non_durable_authorization():
  router=ExecutionRouter();router.register("test",Executor())
  import pytest
  with pytest.raises(ApprovalRequired,match="durable"):
-  asyncio.run(ProjectCycle(SensitivePlanner(),router,Verifier(),gateway).run_once({},"test","volatile"))
+  asyncio.run(ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway).run_once({},"test","volatile"))
 
 def test_atomic_sensitive_approval_cannot_be_rebound_to_other_task(tmp_path):
  from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
