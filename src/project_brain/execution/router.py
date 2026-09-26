@@ -30,7 +30,7 @@ class ExecutionRouter:
   if self.idempotency:
    current=self.idempotency.status(key)
    if current is not None:raise ReconciliationRequired(f"operation {key} was already reserved or completed")
-   if not self.idempotency.reserve(key):raise ReconciliationRequired(f"operation {key} was concurrently reserved")
+   if not self.idempotency.reserve(key,{"task_id":request.task_id,"action":request.goal}):raise ReconciliationRequired(f"operation {key} was concurrently reserved")
   result=await self._run(name,request)
   if self.idempotency:self.idempotency.complete(key,result_ref=result.task_id)
   return result
