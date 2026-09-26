@@ -4,11 +4,12 @@ from typing import Any
 from .provider import ModelProvider,ModelProviderError
 from .types import ModelMessage
 from project_brain.contracts import ExecutionRequest
+from pydantic import ValidationError
 
 SYSTEM="""You are the planning brain of a long-running project.
 Return JSON only. Choose the next bounded action that reduces uncertainty or advances a verified goal.
 Never claim execution occurred. Never approve your own work.
-Required keys: task_id, goal, hypothesis, constraints, allowed_actions, evidence_required, risk, timeout_seconds.
+Required keys: task_id, goal, hypothesis, constraints, allowed_actions, evidence_required, risk, timeout_seconds.\nFor sensitive or irreversible actions, operation_id is mandatory and must be stable for that exact operation.
 risk must be low, sensitive, or irreversible.
 """
 
@@ -25,9 +26,10 @@ class JsonModelPlanner:
         try: data=json.loads(response.text)
         except json.JSONDecodeError as e: raise ModelProviderError("planner returned invalid JSON") from e
         if data.get("action")=="idle": return None
-        return ExecutionRequest.model_validate(data)
+        try: return ExecutionRequest.model_validate(data)
+        except ValidationError as e: raise ModelProviderError("planner returned an invalid execution request") from e
 
     async def learn(self,state,request,result,verification):
-        history=list(state.get("history",[]))
+        history=list(state.get("history",[]))[-99:]
         history.append({"task_id":request.task_id,"goal":request.goal,"completed":result.completed,"verified":verification.accepted,"reasons":verification.reasons})
         return {**state,"history":history}
