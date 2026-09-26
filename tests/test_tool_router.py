@@ -44,4 +44,17 @@ def test_external_tool_cannot_be_declared_low_risk_even_with_valid_action():
 def test_sensitive_external_tool_can_run_when_action_is_allowed():
  reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
  req=ExecutionRequest(task_id="t",goal="g",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
- assert asyncio.run(ToolRouter(reg).execute(req,ToolCall("external",{"actions":["read"]}))).ok
+ assert asyncio.run(ToolRouter(reg,authorization=lambda request,call:True).execute(req,ToolCall("external",{"actions":["read"]}))).ok
+
+
+def test_sensitive_tool_is_blocked_without_authorization_proof():
+ reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
+ req=ExecutionRequest(task_id="t",goal="g",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
+ with pytest.raises(ToolAuthorizationError,match="authorization proof"):
+  asyncio.run(ToolRouter(reg).execute(req,ToolCall("external",{"actions":["read"]})))
+
+def test_sensitive_tool_rejects_invalid_authorization_proof():
+ reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
+ req=ExecutionRequest(task_id="t",goal="g",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
+ with pytest.raises(ToolAuthorizationError,match="rejected"):
+  asyncio.run(ToolRouter(reg,authorization=lambda request,call:False).execute(req,ToolCall("external",{"actions":["read"]})))
