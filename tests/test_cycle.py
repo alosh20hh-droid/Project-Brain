@@ -27,7 +27,7 @@ import pytest
 
 class SensitivePlanner(Planner):
  async def next_request(self,state):
-  return ExecutionRequest(task_id="s1",goal="sensitive-action",risk=RiskLevel.SENSITIVE)
+  return ExecutionRequest(task_id="s1",operation_id="op:s1:1",goal="sensitive-action",risk=RiskLevel.SENSITIVE)
 
 def test_sensitive_cycle_requires_matching_persisted_approval():
  router=ExecutionRouter();router.register("test",Executor())
@@ -35,11 +35,25 @@ def test_sensitive_cycle_requires_matching_persisted_approval():
  cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
  with pytest.raises(ApprovalRequired):
   asyncio.run(cycle.run_once({},"test"))
- store.create(ApprovalRequest(id="a",task_id="other",action="sensitive-action",reason="test",risk="sensitive"))
+ store.create(ApprovalRequest(id="a",task_id="other",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"))
  store.decide("a",True,"owner")
  with pytest.raises(ApprovalRequired):
   asyncio.run(cycle.run_once({},"test","a"))
- store.create(ApprovalRequest(id="b",task_id="s1",action="sensitive-action",reason="test",risk="sensitive"))
+ store.create(ApprovalRequest(id="b",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"))
  store.decide("b",True,"owner")
  out=asyncio.run(cycle.run_once({},"test","b"))
  assert out.status=="accepted"
+
+
+def test_sensitive_approval_cannot_authorize_different_operation():
+ router=ExecutionRouter();router.register("test",Executor())
+ store=ApprovalStore();gateway=ApprovalGateway(store);cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
+ store.create(ApprovalRequest(id="wrong-op",task_id="s1",operation_id="op:other",action="sensitive-action",reason="test",risk="sensitive"));store.decide("wrong-op",True,"owner")
+ with pytest.raises(ApprovalRequired):asyncio.run(cycle.run_once({},"test","wrong-op"))
+
+def test_sensitive_approval_is_consumed_after_one_execution():
+ router=ExecutionRouter();router.register("test",Executor())
+ store=ApprovalStore();gateway=ApprovalGateway(store);cycle=ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway)
+ store.create(ApprovalRequest(id="once",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("once",True,"owner")
+ asyncio.run(cycle.run_once({},"test","once"))
+ with pytest.raises(ApprovalRequired):asyncio.run(cycle.run_once({},"test","once"))
