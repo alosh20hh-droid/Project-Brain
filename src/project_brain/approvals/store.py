@@ -24,6 +24,10 @@ class ApprovalStore:
   if item.status!=ApprovalStatus.PENDING:raise ValueError("approval already decided")
   item.status=ApprovalStatus.APPROVED if approved else ApprovalStatus.REJECTED
   item.decided_by=actor;item.decided_at=datetime.now(timezone.utc).isoformat();self._save(item);return item
+ def expire(self,item_id:str)->ApprovalRequest:
+  item=self.get(item_id)
+  if item.status in {ApprovalStatus.REJECTED,ApprovalStatus.EXPIRED}:return item
+  item.status=ApprovalStatus.EXPIRED;self._save(item);return item
  def consumed(self,item_id:str)->bool:
   if self.store:return self.store.get("approval_consumed",item_id) is not None
   return item_id in self._consumed
