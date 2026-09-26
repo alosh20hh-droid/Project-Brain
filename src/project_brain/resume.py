@@ -13,4 +13,6 @@ class ResumeManager:
   self.projects=projects; self.runs=runs
  def load(self,project_id:str,run_id:str|None=None)->ResumePoint:
   state,version=self.projects.load_state(project_id)
-  return ResumePoint(state,version,self.runs.get(run_id) if run_id else None)
+  run=self.runs.get(run_id) if run_id else None
+  if run is not None and run.project_id!=project_id:raise ValueError("run belongs to a different project")
+  return ResumePoint(state,version,run)
