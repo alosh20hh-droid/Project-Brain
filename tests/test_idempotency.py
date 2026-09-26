@@ -27,3 +27,11 @@ def test_completed_action_stays_completed_and_cannot_be_reserved_again(tmp_path)
  i.complete("pay:1","receipt:2")
  assert i.status("pay:1")["result_ref"]=="receipt:1"
  assert not i.reserve("pay:1")
+
+
+def test_completion_preserves_reservation_scope(tmp_path):
+ i=IdempotencyStore(SQLiteProjectStore(tmp_path/"brain.db"))
+ assert i.reserve("op",{"task_id":"t1","action":"send","approval_id":"a1"})
+ i.complete("op","result")
+ record=i.status("op")
+ assert record=={"status":"completed","task_id":"t1","action":"send","approval_id":"a1","result_ref":"result"}
