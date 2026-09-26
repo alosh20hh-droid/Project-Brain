@@ -6,11 +6,11 @@ from .types import ModelMessage
 from project_brain.contracts import ExecutionRequest
 from pydantic import ValidationError
 
-SENSITIVE_KEYS={"password","passwd","secret","token","api_key","apikey","authorization","cookie","private_key"}
+SENSITIVE_FRAGMENTS={"password","passwd","secret","token","credential","api_key","apikey","authorization","cookie","private_key"}\n\ndef _sensitive_key(key:Any)->bool:\n    normalized=str(key).lower().replace("-","_").replace(" ","_")\n    return any(fragment in normalized for fragment in SENSITIVE_FRAGMENTS)
 
 def _safe_context(value:Any,depth:int=0)->Any:
     if depth>8:return "[truncated]"
-    if isinstance(value,dict):return {str(k):("[redacted]" if str(k).lower() in SENSITIVE_KEYS else _safe_context(v,depth+1)) for k,v in value.items()}
+    if isinstance(value,dict):return {str(k):("[redacted]" if _sensitive_key(k) else _safe_context(v,depth+1)) for k,v in value.items()}
     if isinstance(value,list):return [_safe_context(v,depth+1) for v in value[-100:]]
     if isinstance(value,str) and len(value)>4000:return value[:4000]+"...[truncated]"
     return value
