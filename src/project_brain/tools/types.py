@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field\nfrom project_brain.contracts import RiskLevel
 
 class ToolKind(str,Enum):
     INTERNAL="internal"
@@ -14,7 +14,7 @@ class ToolSpec(BaseModel):
     name:str
     kind:ToolKind
     description:str
-    allowed_actions:list[str]=Field(default_factory=list)
+    allowed_actions:list[str]=Field(default_factory=list)\n    minimum_risk:RiskLevel|None=None
 
 class ToolResult(BaseModel):
     ok:bool
