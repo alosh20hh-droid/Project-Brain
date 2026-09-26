@@ -27,15 +27,11 @@ class ProjectCycle:
   if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
    if self.approval_gateway is None:raise ApprovalRequired(f"Owner approval gateway required for task {request.task_id}")
    if request.operation_id is None:raise ApprovalRequired("sensitive execution requires an operation id")
-   verdict=self.approval_gateway.check(approval_id,request.task_id,request.goal,operation_id=request.operation_id)
-   if not verdict.allowed:raise ApprovalRequired(verdict.reason)
-   if getattr(self.router,"idempotency",None) is not None and self.approval_gateway.store.store is not None:
-    reserved=self.approval_gateway.reserve_operation(approval_id,request.operation_id)
-    if not reserved.allowed:raise ApprovalRequired(reserved.reason)
-    reserved_by_approval=True
-   else:
-    consumed=self.approval_gateway.consume(approval_id,operation_id=request.operation_id)
-    if not consumed.allowed:raise ApprovalRequired(consumed.reason)
+   if getattr(self.router,"idempotency",None) is None or self.approval_gateway.store.store is None:
+    raise ApprovalRequired("sensitive execution requires durable approval and idempotency stores")
+   reserved=self.approval_gateway.reserve_operation(approval_id,request.operation_id,task_id=request.task_id,action=request.goal)
+   if not reserved.allowed:raise ApprovalRequired(reserved.reason)
+   reserved_by_approval=True
   if reserved_by_approval:
    result=await self.router.execute_reserved(executor_name,request)
   else:
