@@ -16,7 +16,7 @@ class SpendingGate:
   verdict=self.approvals.check(approval_id,task_id,action,amount,currency,operation_id=operation_id)
   if not verdict.allowed:return SpendVerdict(False,verdict.reason)
   if not self.ledger.reserve(amount):return SpendVerdict(False,"budget unavailable")
-  consumed=self.approvals.consume(approval_id,operation_id=operation_id)
+  consumed=self.approvals.consume(approval_id,task_id=task_id,action=action,amount=amount,currency=currency,operation_id=operation_id)
   if not consumed.allowed:
    self.ledger.release(amount);return SpendVerdict(False,consumed.reason)
   return SpendVerdict(True,"approved, reserved, and consumed")
