@@ -1,14 +1,21 @@
 from __future__ import annotations
+import json
 from .sqlite import SQLiteProjectStore
 
 class IdempotencyStore:
  def __init__(self,store:SQLiteProjectStore)->None:self.store=store
- def reserve(self,key:str)->bool:
-  return self.store.put_if_absent("idempotency",key,{"status":"reserved"})
+ def reserve(self,key:str,metadata:dict|None=None)->bool:
+  value={"status":"reserved"}
+  if metadata:value.update(metadata)
+  return self.store.put_if_absent("idempotency",key,value)
  def complete(self,key:str,result_ref:str|None=None)->None:
-  current=self.status(key)
-  if current is None:raise RuntimeError("cannot complete an unreserved action")
-  if current.get("status")=="completed":return
-  if current.get("status")!="reserved":raise RuntimeError("invalid idempotency state")
-  self.store.put("idempotency",key,{"status":"completed","result_ref":result_ref})
+  with self.store.connect() as db:
+   db.execute("BEGIN IMMEDIATE")
+   row=db.execute("SELECT value_json FROM kv WHERE namespace=? AND key=?",("idempotency",key)).fetchone()
+   if row is None:raise RuntimeError("cannot complete an unreserved action")
+   current=json.loads(row[0])
+   if current.get("status")=="completed":return
+   if current.get("status")!="reserved":raise RuntimeError("invalid idempotency state")
+   current["status"]="completed";current["result_ref"]=result_ref
+   db.execute("UPDATE kv SET value_json=? WHERE namespace=? AND key=?",(json.dumps(current,ensure_ascii=False,sort_keys=True),"idempotency",key))
  def status(self,key:str):return self.store.get("idempotency",key)
