@@ -7,6 +7,7 @@ class ModelRegistry:
 
     def register(self,name:str,provider:ModelProvider)->None:
         if not name.strip(): raise ValueError("provider name is required")
+        if name in self._providers: raise ValueError(f"Model provider already registered: {name}")
         self._providers[name]=provider
 
     def get(self,name:str)->ModelProvider:
