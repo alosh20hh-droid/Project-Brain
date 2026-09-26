@@ -57,3 +57,15 @@ def test_sensitive_approval_is_consumed_after_one_execution():
  store.create(ApprovalRequest(id="once",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("once",True,"owner")
  asyncio.run(cycle.run_once({},"test","once"))
  with pytest.raises(ApprovalRequired):asyncio.run(cycle.run_once({},"test","once"))
+
+
+def test_persistent_sensitive_cycle_atomically_consumes_and_reserves(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ db=tmp_path/"brain.db";persistent=SQLiteProjectStore(db)
+ router=ExecutionRouter(IdempotencyStore(persistent));router.register("test",Executor())
+ store=ApprovalStore(persistent);gateway=ApprovalGateway(store)
+ store.create(ApprovalRequest(id="atomic",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("atomic",True,"owner")
+ out=asyncio.run(ProjectCycle(SensitivePlanner(),router,EvidenceVerifier(),gateway).run_once({},"test","atomic"))
+ assert out.status=="accepted"
+ assert store.consumed("atomic")
+ assert IdempotencyStore(persistent).status("op:s1:1")["status"]=="completed"
