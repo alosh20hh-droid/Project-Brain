@@ -16,6 +16,8 @@ class IndependentEvidenceVerifier:
   for r in records:
    if task_id is not None and r.task_id!=task_id:
     rejected.append(r.id);reasons.append(f"wrong task: {r.id}");continue
+   if r.payload is None and r.uri:
+    rejected.append(r.id);reasons.append(f"unsealed uri evidence: {r.id}");continue
    if r.payload is None and not r.uri:
     rejected.append(r.id);reasons.append(f"empty evidence: {r.id}");continue
    if r.payload is not None and not r.content_hash:
