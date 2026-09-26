@@ -6,6 +6,15 @@ from .types import ModelMessage
 from project_brain.contracts import ExecutionRequest
 from pydantic import ValidationError
 
+SENSITIVE_KEYS={"password","passwd","secret","token","api_key","apikey","authorization","cookie","private_key"}
+
+def _safe_context(value:Any,depth:int=0)->Any:
+    if depth>8:return "[truncated]"
+    if isinstance(value,dict):return {str(k):("[redacted]" if str(k).lower() in SENSITIVE_KEYS else _safe_context(v,depth+1)) for k,v in value.items()}
+    if isinstance(value,list):return [_safe_context(v,depth+1) for v in value[-100:]]
+    if isinstance(value,str) and len(value)>4000:return value[:4000]+"...[truncated]"
+    return value
+
 SYSTEM="""You are the planning brain of a long-running project.
 Return JSON only. Choose the next bounded action that reduces uncertainty or advances a verified goal.
 Never claim execution occurred. Never approve your own work.
@@ -20,7 +29,7 @@ class JsonModelPlanner:
     async def next_request(self,state:dict[str,Any])->ExecutionRequest|None:
         response=await self.provider.complete([
             ModelMessage(role="system",content=SYSTEM),
-            ModelMessage(role="user",content=json.dumps(state,ensure_ascii=False))
+            ModelMessage(role="user",content=json.dumps(_safe_context(state),ensure_ascii=False)[:50000])
         ])
         if not response.text.strip(): return None
         try: data=json.loads(response.text)
