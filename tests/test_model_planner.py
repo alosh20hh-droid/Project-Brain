@@ -51,3 +51,14 @@ def test_planner_context_is_bounded():
  provider=Capture();planner=JsonModelPlanner(provider)
  asyncio.run(planner.next_request({"blob":"x"*100000}))
  assert len(provider.messages[1].content)<=50000
+
+
+@pytest.mark.asyncio
+async def test_planner_redacts_secret_key_variants():
+ provider=CaptureProvider()
+ planner=JsonModelPlanner(provider)
+ await planner.next_request({"access_token":"a","client-secret":"b","database credentials":"c","nested":{"refreshToken":"d"}})
+ sent=provider.messages[-1].content
+ for secret in ("a","b","c","d"):
+  assert secret not in sent
+ assert sent.count("[redacted]")>=4
