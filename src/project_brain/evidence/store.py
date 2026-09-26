@@ -10,6 +10,14 @@ class EvidenceStore:
    if not self.store.put_if_absent("evidence",item.id,item.model_dump(mode="json")):raise ValueError(f"duplicate evidence id: {item.id}")
   elif item.id in self._items:raise ValueError(f"duplicate evidence id: {item.id}")
   self._items[item.id]=item
+ def mark_verified(self,evidence_id:str,accepted:bool,reasons:list[str]|None=None)->None:
+  record=self.get(evidence_id)
+  verdict={"accepted":bool(accepted),"task_id":record.task_id,"reasons":list(reasons or [])}
+  if self.store:self.store.put("evidence_verdict",evidence_id,verdict)
+  else:setattr(self,"_verdicts",getattr(self,"_verdicts",{}));self._verdicts[evidence_id]=verdict
+ def verdict(self,evidence_id:str)->dict|None:
+  if self.store:return self.store.get("evidence_verdict",evidence_id)
+  return getattr(self,"_verdicts",{}).get(evidence_id)
  def get(self,evidence_id:str)->EvidenceRecord:
   if self.store:
    raw=self.store.get("evidence",evidence_id)
