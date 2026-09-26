@@ -16,6 +16,7 @@ class EvidenceRequirement(BaseModel):
 class ExecutionRequest(BaseModel):
     task_id: str
     goal: str
+    operation_id: str | None = None
     hypothesis: str | None = None
     constraints: list[str] = Field(default_factory=list)
     allowed_actions: list[str] = Field(default_factory=list)
