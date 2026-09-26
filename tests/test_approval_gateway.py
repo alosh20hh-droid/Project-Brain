@@ -60,3 +60,13 @@ def test_atomic_operation_reservation_rechecks_amount_and_currency(tmp_path):
  assert not gateway.reserve_operation("money","op-money",task_id="t",action="buy",amount=Decimal("3"),currency="EUR").allowed
  assert gateway.reserve_operation("money","op-money",task_id="t",action="buy",amount=Decimal("3"),currency="USD").allowed
  assert store.consumed("money")
+
+
+def test_wrong_scope_cannot_consume_or_burn_approval():
+ from decimal import Decimal
+ s=ApprovalStore();s.create(ApprovalRequest(id="scoped",task_id="t",action="buy",operation_id="op-1",reason="needed",risk="sensitive",amount=3,currency="USD"));s.decide("scoped",True,"owner")
+ g=ApprovalGateway(s)
+ denied=g.consume("scoped",task_id="other",action="buy",amount=Decimal("3"),currency="USD",operation_id="op-1")
+ assert not denied.allowed
+ assert not s.consumed("scoped")
+ assert g.consume("scoped",task_id="t",action="buy",amount=Decimal("3"),currency="USD",operation_id="op-1").allowed
