@@ -18,3 +18,4 @@ class ApprovalRequest(BaseModel):
  created_at:str=Field(default_factory=lambda:datetime.now(timezone.utc).isoformat())
  decided_at:str|None=None
  decided_by:str|None=None
+ expires_at:str|None=None
