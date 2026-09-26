@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import Enum
 from typing import Any, Protocol
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 class RiskLevel(str, Enum):
     LOW = "low"
@@ -23,6 +23,15 @@ class ExecutionRequest(BaseModel):
     evidence_required: list[EvidenceRequirement] = Field(default_factory=list)
     risk: RiskLevel = RiskLevel.LOW
     timeout_seconds: int = 600
+
+    @model_validator(mode="after")
+    def validate_execution_boundary(self):
+        if not self.task_id.strip(): raise ValueError("task_id is required")
+        if not self.goal.strip(): raise ValueError("goal is required")
+        if self.timeout_seconds <= 0: raise ValueError("timeout_seconds must be positive")
+        if self.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE} and not (self.operation_id and self.operation_id.strip()):
+            raise ValueError("operation_id is required for sensitive or irreversible execution")
+        return self
 
 class Evidence(BaseModel):
     kind: str
