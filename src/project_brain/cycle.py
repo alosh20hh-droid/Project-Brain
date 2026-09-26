@@ -17,12 +17,15 @@ class CycleOutcome:
  status:str
 
 class ProjectCycle:
- def __init__(self,planner:BrainPlanner,router,verifier,approval_gateway=None)->None:
-  self.planner=planner;self.router=router;self.verifier=verifier;self.approval_gateway=approval_gateway
+ def __init__(self,planner:BrainPlanner,router,verifier,approval_gateway=None,guardrails=None)->None:
+  self.planner=planner;self.router=router;self.verifier=verifier;self.approval_gateway=approval_gateway;self.guardrails=guardrails
 
  async def run_once(self,state:dict,executor_name:str,approval_id:str|None=None)->CycleOutcome:
   request=await self.planner.next_request(state)
   if request is None:return CycleOutcome(state,None,None,None,"idle")
+  if self.guardrails is not None:
+   guard=self.guardrails.check(request)
+   if not guard.allowed and not (request.risk==RiskLevel.IRREVERSIBLE and self.approval_gateway is not None):raise ApprovalRequired(guard.reason)
   reserved_by_approval=False
   if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
    if self.approval_gateway is None:raise ApprovalRequired(f"Owner approval gateway required for task {request.task_id}")
