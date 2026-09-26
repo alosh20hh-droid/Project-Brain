@@ -37,3 +37,12 @@ def test_expired_approval_is_blocked_and_persisted(tmp_path):
  assert not ApprovalGateway(s).check("old","t","pay",now=now).allowed
  restarted=ApprovalStore(SQLiteProjectStore(db))
  assert restarted.get("old").status.value=="expired"
+
+
+def test_two_stores_cannot_consume_same_approval(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore
+ db=tmp_path/"brain.db"
+ first=ApprovalStore(SQLiteProjectStore(db));first.create(ApprovalRequest(id="shared",task_id="t",action="pay",reason="needed",risk="sensitive"));first.decide("shared",True,"owner")
+ second=ApprovalStore(SQLiteProjectStore(db))
+ assert first.consume("shared")
+ assert not second.consume("shared")
