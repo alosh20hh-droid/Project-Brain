@@ -5,6 +5,7 @@ from .contracts import ExecutionRequest,ExecutionResult,VerificationResult,RiskL
 from .approval import ApprovalRequired
 from .guardrails import Guardrails
 from .replanner import assess_replan
+from .execution.router import request_fingerprint
 
 class GuardrailViolation(RuntimeError):pass
 
@@ -36,7 +37,7 @@ class ProjectCycle:
    if request.operation_id is None:raise ApprovalRequired("sensitive execution requires an operation id")
    if getattr(self.router,"idempotency",None) is None or self.approval_gateway.store.store is None:
     raise ApprovalRequired("sensitive execution requires durable approval and idempotency stores")
-   reserved=self.approval_gateway.reserve_operation(approval_id,request.operation_id,task_id=request.task_id,action=request.goal)
+   reserved=self.approval_gateway.reserve_operation(approval_id,request.operation_id,task_id=request.task_id,action=request.goal,request_fingerprint=request_fingerprint(request))
    if not reserved.allowed:raise ApprovalRequired(reserved.reason)
    reserved_by_approval=True
   if reserved_by_approval:
