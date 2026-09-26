@@ -34,3 +34,11 @@ def test_empty_evidence_cannot_certify():
  r=EvidenceRecord(id="e3",task_id="t",kind="source",source="test",collected_at=datetime.now(timezone.utc).isoformat(),strength=EvidenceStrength.STRONG)
  v=IndependentEvidenceVerifier().verify(["source"],[r],task_id="t")
  assert not v.accepted
+
+
+def test_uri_only_evidence_is_not_trusted_without_captured_payload():
+ from project_brain.evidence.types import EvidenceRecord,EvidenceStrength
+ record=EvidenceRecord(id="uri-only",task_id="t",kind="source",source="web",uri="https://example.invalid/proof",collected_at="2026-09-26T00:00:00+00:00",strength=EvidenceStrength.STRONG)
+ verdict=IndependentEvidenceVerifier().verify(["source"],[record],task_id="t")
+ assert verdict.accepted is False
+ assert "unsealed uri evidence" in verdict.reasons[0]
