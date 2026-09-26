@@ -63,8 +63,8 @@ async def test_planner_redacts_secret_key_variants():
    self.messages=messages;return ModelResponse(text="")
  provider=CaptureProvider()
  planner=JsonModelPlanner(provider)
- await planner.next_request({"access_token":"a","client-secret":"b","database credentials":"c","nested":{"refreshToken":"d"}})
+ await planner.next_request({"access_token":"SECRET_A_91827","client-secret":"SECRET_B_82716","database credentials":"SECRET_C_73615","nested":{"refreshToken":"SECRET_D_64504"}})
  sent=provider.messages[-1].content
- for secret in ("a","b","c","d"):
+ for secret in ("SECRET_A_91827","SECRET_B_82716","SECRET_C_73615","SECRET_D_64504"):
   assert secret not in sent
  assert sent.count("[redacted]")>=4
