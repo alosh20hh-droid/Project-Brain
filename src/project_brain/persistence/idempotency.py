@@ -5,8 +5,8 @@ from .sqlite import SQLiteProjectStore
 class IdempotencyStore:
  def __init__(self,store:SQLiteProjectStore)->None:self.store=store
  def reserve(self,key:str,metadata:dict|None=None)->bool:
-  value={"status":"reserved"}
-  if metadata:value.update(metadata)
+  value=dict(metadata or {})
+  value["status"]="reserved"
   return self.store.put_if_absent("idempotency",key,value)
  def complete(self,key:str,result_ref:str|None=None)->None:
   with self.store.connect() as db:
