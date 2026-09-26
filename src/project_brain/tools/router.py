@@ -16,7 +16,11 @@ class ToolRouter:
  async def execute(self,request:ExecutionRequest,call:ToolCall)->ToolResult:
   if call.name not in request.allowed_actions:
    raise ToolAuthorizationError(f"tool not offered for task: {call.name}")
-  spec=self.registry.spec(call.name)\n  minimum=spec.minimum_risk\n  if minimum is None and spec.kind.value=="external":minimum=RiskLevel.SENSITIVE\n  rank={RiskLevel.LOW:0,RiskLevel.SENSITIVE:1,RiskLevel.IRREVERSIBLE:2}\n  if minimum is not None and rank[request.risk]<rank[minimum]:raise ToolAuthorizationError("request risk understates tool risk")
+  spec=self.registry.spec(call.name)
+  minimum=spec.minimum_risk
+  if minimum is None and spec.kind.value=="external":minimum=RiskLevel.SENSITIVE
+  rank={RiskLevel.LOW:0,RiskLevel.SENSITIVE:1,RiskLevel.IRREVERSIBLE:2}
+  if minimum is not None and rank[request.risk]<rank[minimum]:raise ToolAuthorizationError("request risk understates tool risk")
   if spec.allowed_actions:
    raw=call.arguments.get("actions")
    if not isinstance(raw,list) or not raw:
