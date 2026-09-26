@@ -1,6 +1,7 @@
 import asyncio
 from project_brain.contracts import Evidence, EvidenceRequirement, ExecutionRequest, ExecutionResult
-from project_brain.verifier import EvidenceVerifier\nfrom project_brain.evidence.integrity import stable_hash
+from project_brain.verifier import EvidenceVerifier
+from project_brain.evidence.integrity import stable_hash
 
 def test_verifier_rejects_missing_evidence():
     req = ExecutionRequest(task_id="t1", goal="test", evidence_required=[EvidenceRequirement(kind="receipt", description="proof")])
