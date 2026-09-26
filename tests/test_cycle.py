@@ -123,3 +123,17 @@ def test_verified_result_resets_failure_streak():
  out=asyncio.run(ProjectCycle(Planner(),router,EvidenceVerifier()).run_once({"consecutive_failures":3},"test"))
  assert out.status=="accepted"
  assert out.state["consecutive_failures"]==0
+
+
+def test_reserved_sensitive_operation_rejects_request_tampering(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ from project_brain.execution.router import request_fingerprint,ReconciliationRequired
+ persistent=SQLiteProjectStore(tmp_path/"tamper.db")
+ store=ApprovalStore(persistent);gateway=ApprovalGateway(store)
+ original=ExecutionRequest(task_id="s1",operation_id="op:tamper",goal="sensitive-action",risk=RiskLevel.SENSITIVE,allowed_actions=["read"])
+ store.create(ApprovalRequest(id="tamper",task_id="s1",operation_id="op:tamper",action="sensitive-action",reason="test",risk="sensitive"));store.decide("tamper",True,"owner")
+ assert gateway.reserve_operation("tamper","op:tamper",task_id="s1",action="sensitive-action",request_fingerprint=request_fingerprint(original)).allowed
+ router=ExecutionRouter(IdempotencyStore(persistent));router.register("test",Executor())
+ changed=original.model_copy(update={"allowed_actions":["read","delete"]})
+ with pytest.raises(ReconciliationRequired,match="request changed"):
+  asyncio.run(router.execute_reserved("test",changed))
