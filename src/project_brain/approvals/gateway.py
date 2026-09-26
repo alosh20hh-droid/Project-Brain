@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from decimal import Decimal
 from datetime import datetime,timezone
-from .store import ApprovalStore
+from .store import ApprovalStore,_expiry
 from .types import ApprovalStatus
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class ApprovalGateway:
   try:item=self.store.get(approval_id)
   except KeyError:return ApprovalVerdict(False,"approval not found")
   now=now or datetime.now(timezone.utc)
-  if item.expires_at is not None and datetime.fromisoformat(item.expires_at)<=now:
+  if item.expires_at is not None and _expiry(item.expires_at)<=now:
    self.store.expire(approval_id);return ApprovalVerdict(False,"approval expired")
   if item.status!=ApprovalStatus.APPROVED:return ApprovalVerdict(False,f"approval is {item.status.value}")
   if task_id is not None and item.task_id!=task_id:return ApprovalVerdict(False,"approval belongs to a different task")
