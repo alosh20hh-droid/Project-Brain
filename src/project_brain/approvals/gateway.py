@@ -23,4 +23,9 @@ class ApprovalGateway:
    if amount>Decimal(str(item.amount)):return ApprovalVerdict(False,"amount exceeds approved limit")
   if currency is not None:
    if item.currency is None or item.currency.upper()!=currency.upper():return ApprovalVerdict(False,"currency differs from approval")
-  return ApprovalVerdict(True,"approved")
+  if self.store.consumed(approval_id):return ApprovalVerdict(False,"approval already consumed")\n  return ApprovalVerdict(True,"approved")
+
+ def consume(self,approval_id:str)->ApprovalVerdict:
+  try:ok=self.store.consume(approval_id)
+  except KeyError:return ApprovalVerdict(False,"approval not found")
+  return ApprovalVerdict(ok,"consumed" if ok else "approval cannot be consumed")
