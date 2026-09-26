@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from project_brain.contracts import ExecutionRequest
+from project_brain.contracts import ExecutionRequest,RiskLevel
 from .registry import ToolRegistry
 from .types import ToolResult
 
@@ -16,7 +16,7 @@ class ToolRouter:
  async def execute(self,request:ExecutionRequest,call:ToolCall)->ToolResult:
   if call.name not in request.allowed_actions:
    raise ToolAuthorizationError(f"tool not offered for task: {call.name}")
-  spec=self.registry.spec(call.name)
+  spec=self.registry.spec(call.name)\n  minimum=spec.minimum_risk\n  if minimum is None and spec.kind.value=="external":minimum=RiskLevel.SENSITIVE\n  rank={RiskLevel.LOW:0,RiskLevel.SENSITIVE:1,RiskLevel.IRREVERSIBLE:2}\n  if minimum is not None and rank[request.risk]<rank[minimum]:raise ToolAuthorizationError("request risk understates tool risk")
   if spec.allowed_actions:
    raw=call.arguments.get("actions")
    if not isinstance(raw,list) or not raw:
