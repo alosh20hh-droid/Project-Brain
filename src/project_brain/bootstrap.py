@@ -4,7 +4,7 @@ from .persistence import SQLiteProjectStore,RunStore,IdempotencyStore
 from .events import EventBus
 from .runtime import HeartbeatMonitor,LeaseManager
 from .approvals import ApprovalStore,ApprovalGateway
-from .execution import ExecutionRouter
+from .execution.router import ExecutionRouter
 from .evidence import EvidenceStore
 from .long_term_memory import LongTermMemory
 
