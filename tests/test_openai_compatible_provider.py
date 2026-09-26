@@ -16,3 +16,15 @@ def test_compatible_provider_rejects_malformed_response():
 def test_compatible_provider_wraps_transport_failure():
  async def bad(payload):raise OSError("secret network detail")
  with pytest.raises(ModelProviderError,match="transport failed"):asyncio.run(OpenAICompatibleProvider(bad,"m").complete([]))
+
+
+def test_compatible_provider_rejects_non_object_tool_arguments():
+ async def bad(payload):return {"choices":[{"message":{"content":"","tool_calls":[{"id":"c","function":{"name":"x","arguments":"[1,2]"}}]}}]}
+ with pytest.raises(ModelProviderError,match="invalid response"):
+  asyncio.run(OpenAICompatibleProvider(bad,"m").complete([]))
+
+def test_compatible_provider_times_out():
+ async def slow(payload):
+  await asyncio.sleep(0.05);return {"choices":[{"message":{"content":"ok"}}]}
+ with pytest.raises(ModelProviderError,match="timed out"):
+  asyncio.run(OpenAICompatibleProvider(slow,"m",timeout_seconds=0.001).complete([]))
