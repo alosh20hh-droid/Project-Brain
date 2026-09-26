@@ -6,7 +6,11 @@ from .types import ModelMessage
 from project_brain.contracts import ExecutionRequest
 from pydantic import ValidationError
 
-SENSITIVE_FRAGMENTS={"password","passwd","secret","token","credential","api_key","apikey","authorization","cookie","private_key"}\n\ndef _sensitive_key(key:Any)->bool:\n    normalized=str(key).lower().replace("-","_").replace(" ","_")\n    return any(fragment in normalized for fragment in SENSITIVE_FRAGMENTS)
+SENSITIVE_FRAGMENTS={"password","passwd","secret","token","credential","api_key","apikey","authorization","cookie","private_key"}
+
+def _sensitive_key(key:Any)->bool:
+    normalized=str(key).lower().replace("-","_").replace(" ","_")
+    return any(fragment in normalized for fragment in SENSITIVE_FRAGMENTS)
 
 def _safe_context(value:Any,depth:int=0)->Any:
     if depth>8:return "[truncated]"
@@ -18,7 +22,8 @@ def _safe_context(value:Any,depth:int=0)->Any:
 SYSTEM="""You are the planning brain of a long-running project.
 Return JSON only. Choose the next bounded action that reduces uncertainty or advances a verified goal.
 Never claim execution occurred. Never approve your own work.
-Required keys: task_id, goal, hypothesis, constraints, allowed_actions, evidence_required, risk, timeout_seconds.\nFor sensitive or irreversible actions, operation_id is mandatory and must be stable for that exact operation.
+Required keys: task_id, goal, hypothesis, constraints, allowed_actions, evidence_required, risk, timeout_seconds.
+For sensitive or irreversible actions, operation_id is mandatory and must be stable for that exact operation.
 risk must be low, sensitive, or irreversible.
 """
 
