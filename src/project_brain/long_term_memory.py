@@ -35,11 +35,11 @@ class LongTermMemory:
    for ref in item.evidence_refs:
     try:record=self.evidence.get(ref)
     except KeyError as exc:raise ValueError(f"trusted memory references missing evidence: {ref}") from exc
-    verdict=self.evidence.verdict(ref)
-    if verdict is None or not verdict.get("accepted"):raise ValueError(f"trusted memory requires accepted evidence verdict: {ref}")
     if record.strength==EvidenceStrength.WEAK:raise ValueError(f"trusted memory references weak evidence: {ref}")
     if record.payload is not None and (not record.content_hash or not verify_hash(record.payload,record.content_hash)):
      raise ValueError(f"trusted memory references invalid evidence: {ref}")
+    verdict=self.evidence.verdict(ref)
+    if verdict is None or not verdict.get("accepted"):raise ValueError(f"trusted memory requires accepted evidence verdict: {ref}")
   if self.store:
    if self.store.get("memory",item.id) is not None:raise ValueError(f"duplicate memory id: {item.id}")
   elif item.id in self._items:raise ValueError(f"duplicate memory id: {item.id}")
