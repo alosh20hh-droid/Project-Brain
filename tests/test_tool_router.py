@@ -43,7 +43,7 @@ def test_external_tool_cannot_be_declared_low_risk_even_with_valid_action():
 
 def test_sensitive_external_tool_can_run_when_action_is_allowed():
  reg=ToolRegistry();reg.register(ToolSpec(name="external",kind=ToolKind.EXTERNAL,description="external",allowed_actions=["read"]),external)
- req=ExecutionRequest(task_id="t",goal="g",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
+ req=ExecutionRequest(task_id="t",goal="g",operation_id="op-t",risk=RiskLevel.SENSITIVE,allowed_actions=["external"])
  assert asyncio.run(ToolRouter(reg,authorization=lambda request,call:True).execute(req,ToolCall("external",{"actions":["read"]}))).ok
 
 
