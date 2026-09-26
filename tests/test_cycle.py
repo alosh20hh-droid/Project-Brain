@@ -92,3 +92,18 @@ def test_atomic_sensitive_approval_cannot_be_rebound_to_other_task(tmp_path):
  assert verdict.allowed is False
  assert store.consumed("scope") is False
  assert IdempotencyStore(persistent).status("op:s1:1") is None
+
+
+def test_cycle_enforces_guardrails_before_executor_runs():
+ from project_brain.guardrails import Guardrails
+ class InvalidPlanner(Planner):
+  async def next_request(self,state):
+   return ExecutionRequest(task_id="bad",goal="x",timeout_seconds=0)
+ class CountingExecutor(Executor):
+  def __init__(self):self.calls=0
+  async def execute(self,request):
+   self.calls+=1;return await super().execute(request)
+ executor=CountingExecutor();router=ExecutionRouter();router.register("test",executor)
+ with pytest.raises(ApprovalRequired,match="invalid timeout"):
+  asyncio.run(ProjectCycle(InvalidPlanner(),router,EvidenceVerifier(),guardrails=Guardrails()).run_once({},"test"))
+ assert executor.calls==0
