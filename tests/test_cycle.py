@@ -70,3 +70,23 @@ def test_persistent_sensitive_cycle_atomically_consumes_and_reserves(tmp_path):
  assert out.status=="accepted"
  assert store.consumed("atomic")
  assert IdempotencyStore(persistent).status("op:s1:1")["status"]=="completed"
+
+
+def test_sensitive_cycle_refuses_non_durable_authorization():
+ from project_brain.approvals import ApprovalStore,ApprovalGateway,ApprovalRequest
+ store=ApprovalStore();gateway=ApprovalGateway(store)
+ store.create(ApprovalRequest(id="volatile",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("volatile",True,"owner")
+ router=ExecutionRouter();router.register("test",Executor())
+ import pytest
+ with pytest.raises(ApprovalRequired,match="durable"):
+  asyncio.run(ProjectCycle(SensitivePlanner(),router,Verifier(),gateway).run_once({},"test","volatile"))
+
+def test_atomic_sensitive_approval_cannot_be_rebound_to_other_task(tmp_path):
+ from project_brain.persistence import SQLiteProjectStore,IdempotencyStore
+ from project_brain.approvals import ApprovalStore,ApprovalGateway,ApprovalRequest
+ persistent=SQLiteProjectStore(tmp_path/"scope.db");store=ApprovalStore(persistent);gateway=ApprovalGateway(store)
+ store.create(ApprovalRequest(id="scope",task_id="s1",operation_id="op:s1:1",action="sensitive-action",reason="test",risk="sensitive"));store.decide("scope",True,"owner")
+ verdict=gateway.reserve_operation("scope","op:s1:1",task_id="other",action="sensitive-action")
+ assert verdict.allowed is False
+ assert store.consumed("scope") is False
+ assert IdempotencyStore(persistent).status("op:s1:1") is None
