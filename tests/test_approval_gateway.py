@@ -27,3 +27,13 @@ def test_approval_and_consumption_survive_restart(tmp_path):
  first_gateway=ApprovalGateway(first);assert first_gateway.check("persist","t","pay").allowed;assert first_gateway.consume("persist").allowed
  second=ApprovalGateway(ApprovalStore(SQLiteProjectStore(db)))
  assert not second.check("persist","t","pay").allowed
+
+
+def test_expired_approval_is_blocked_and_persisted(tmp_path):
+ from datetime import datetime,timezone,timedelta
+ from project_brain.persistence import SQLiteProjectStore
+ db=tmp_path/"brain.db";now=datetime.now(timezone.utc)
+ s=ApprovalStore(SQLiteProjectStore(db));s.create(ApprovalRequest(id="old",task_id="t",action="pay",reason="needed",risk="sensitive",expires_at=(now-timedelta(seconds=1)).isoformat()));s.decide("old",True,"owner")
+ assert not ApprovalGateway(s).check("old","t","pay",now=now).allowed
+ restarted=ApprovalStore(SQLiteProjectStore(db))
+ assert restarted.get("old").status.value=="expired"
