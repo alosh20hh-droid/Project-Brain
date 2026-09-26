@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime,timezone
 import json
+from decimal import Decimal
 from project_brain.persistence import SQLiteProjectStore
 from .types import ApprovalRequest,ApprovalStatus
 
@@ -33,7 +34,7 @@ class ApprovalStore:
   item=self.get(item_id)
   if item.status in {ApprovalStatus.REJECTED,ApprovalStatus.EXPIRED}:return item
   item.status=ApprovalStatus.EXPIRED;self._save(item);return item
- def consume_and_reserve_operation(self,item_id:str,operation_id:str,task_id:str|None=None,action:str|None=None)->bool:
+ def consume_and_reserve_operation(self,item_id:str,operation_id:str,task_id:str|None=None,action:str|None=None,amount=None,currency:str|None=None)->bool:
   if not self.store:return False
   now=datetime.now(timezone.utc)
   with self.store.connect() as db:
@@ -44,6 +45,8 @@ class ApprovalStore:
    if item.status!=ApprovalStatus.APPROVED or item.operation_id!=operation_id:return False
    if task_id is not None and item.task_id!=task_id:return False
    if action is not None and item.action!=action:return False
+   if amount is not None and (item.amount is None or Decimal(str(amount))>Decimal(str(item.amount))):return False
+   if currency is not None and (item.currency is None or item.currency.upper()!=currency.upper()):return False
    if item.expires_at and _expiry(item.expires_at)<=now:return False
    if db.execute("SELECT 1 FROM kv WHERE namespace='approval_consumed' AND key=?",(item_id,)).fetchone():return False
    if db.execute("SELECT 1 FROM kv WHERE namespace='idempotency' AND key=?",(operation_id,)).fetchone():return False
