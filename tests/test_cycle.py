@@ -2,7 +2,8 @@ import asyncio
 from project_brain.contracts import Evidence, EvidenceRequirement, ExecutionRequest, ExecutionResult
 from project_brain.cycle import ProjectCycle
 from project_brain.execution.router import ExecutionRouter
-from project_brain.verifier import EvidenceVerifier\nfrom project_brain.evidence.integrity import stable_hash
+from project_brain.verifier import EvidenceVerifier
+from project_brain.evidence.integrity import stable_hash
 
 class Planner:
     async def next_request(self, state):
