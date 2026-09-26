@@ -16,6 +16,8 @@ class RunStore:
  def save(self,record:RunRecord)->None:
   now=datetime.now(timezone.utc).isoformat()
   with sqlite3.connect(self.path) as db:
+   existing=db.execute("SELECT project_id FROM runs WHERE run_id=?",(record.run_id,)).fetchone()
+   if existing is not None and existing[0]!=record.project_id:raise ValueError("run id belongs to a different project")
    db.execute("INSERT INTO runs(run_id,project_id,status,checkpoint,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(run_id) DO UPDATE SET status=excluded.status,checkpoint=excluded.checkpoint,updated_at=excluded.updated_at",(record.run_id,record.project_id,record.status,record.checkpoint,now))
  def get(self,run_id:str)->RunRecord|None:
   with sqlite3.connect(self.path) as db:
