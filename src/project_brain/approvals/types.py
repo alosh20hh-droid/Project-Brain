@@ -10,6 +10,7 @@ class ApprovalRequest(BaseModel):
  id:str
  task_id:str
  action:str
+ operation_id:str|None=None
  reason:str
  risk:str
  amount:float|None=None
