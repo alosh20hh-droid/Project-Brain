@@ -2,7 +2,7 @@ import asyncio
 from project_brain.contracts import Evidence, EvidenceRequirement, ExecutionRequest, ExecutionResult
 from project_brain.cycle import ProjectCycle
 from project_brain.execution.router import ExecutionRouter
-from project_brain.verifier import EvidenceVerifier
+from project_brain.verifier import EvidenceVerifier\nfrom project_brain.evidence.integrity import stable_hash
 
 class Planner:
     async def next_request(self, state):
@@ -12,7 +12,7 @@ class Planner:
 
 class Executor:
     async def execute(self, request):
-        return ExecutionResult(task_id=request.task_id, completed=True, summary="done", evidence=[Evidence(kind="log", source="test", content="ok")])
+        return ExecutionResult(task_id=request.task_id, completed=True, summary="done", evidence=[Evidence(kind="log", source="test", content="ok", content_hash=stable_hash("ok"), strength="supporting")])
 
 def test_full_cycle_accepts_verified_result():
     router=ExecutionRouter(); router.register("test", Executor())
