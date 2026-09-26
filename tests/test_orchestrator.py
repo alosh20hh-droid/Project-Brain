@@ -53,3 +53,16 @@ def test_run_id_cannot_be_reused_for_another_project(tmp_path):
  import pytest
  with pytest.raises(ValueError,match="different project"):
   asyncio.run(Orchestrator(AlwaysActiveCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,second).run({}))
+
+
+def test_state_persistence_failure_never_leaves_run_running(tmp_path):
+ db=tmp_path/"persist-fail.db";services=bootstrap(db)
+ cfg=OrchestratorConfig(project_id="p",run_id="persist-fail",executor_name="test",max_cycles=1)
+ original=services.projects.save_state
+ def fail_save(*args,**kwargs):raise RuntimeError("disk write failed")
+ services.projects.save_state=fail_save
+ import pytest
+ with pytest.raises(RuntimeError,match="disk write failed"):
+  asyncio.run(Orchestrator(AlwaysActiveCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,cfg).run({}))
+ assert services.runs.get("persist-fail").status=="failed_persistence"
+ services.projects.save_state=original
