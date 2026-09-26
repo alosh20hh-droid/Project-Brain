@@ -104,3 +104,22 @@ def test_execution_contract_blocks_invalid_request_before_executor_runs():
  with pytest.raises(ValidationError,match="goal is required"):
   ExecutionRequest(task_id="bad",goal=" ")
  assert executor.calls==0
+
+
+class RejectingVerifier:
+ async def verify(self,request,result):
+  from project_brain.contracts import VerificationResult
+  return VerificationResult(task_id=request.task_id,accepted=False,reasons=["proof insufficient"])
+
+def test_rejected_result_requests_replan_and_tracks_failure():
+ router=ExecutionRouter();router.register("test",Executor())
+ out=asyncio.run(ProjectCycle(Planner(),router,RejectingVerifier()).run_once({},"test"))
+ assert out.status=="replan_required"
+ assert out.state["replan"]["required"] is True
+ assert out.state["consecutive_failures"]==1
+
+def test_verified_result_resets_failure_streak():
+ router=ExecutionRouter();router.register("test",Executor())
+ out=asyncio.run(ProjectCycle(Planner(),router,EvidenceVerifier()).run_once({"consecutive_failures":3},"test"))
+ assert out.status=="accepted"
+ assert out.state["consecutive_failures"]==0
