@@ -15,8 +15,7 @@ class HeartbeatMonitor:
   seen=at or datetime.now(timezone.utc);self._beats[worker_id]=Heartbeat(worker_id,seen)
   if self.store:self.store.put("heartbeat",worker_id,{"seen_at":seen.isoformat()})
  def _get(self,worker_id:str)->Heartbeat|None:
-  h=self._beats.get(worker_id)
-  if h or not self.store:return h
+  if not self.store:return self._beats.get(worker_id)
   raw=self.store.get("heartbeat",worker_id)
   if not raw:return None
   h=Heartbeat(worker_id,datetime.fromisoformat(raw["seen_at"]));self._beats[worker_id]=h;return h
