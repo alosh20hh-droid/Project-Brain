@@ -2,7 +2,8 @@ import asyncio,json
 from project_brain.bootstrap import bootstrap
 from project_brain.contracts import Evidence,ExecutionResult
 from project_brain.cycle import ProjectCycle
-from project_brain.model import JsonModelPlanner,MockModelProvider
+from project_brain.model.json_planner import JsonModelPlanner
+from project_brain.model.mock import MockModelProvider
 from project_brain.orchestrator import Orchestrator,OrchestratorConfig
 from project_brain.verifier import EvidenceVerifier
 from project_brain.evidence.integrity import stable_hash
