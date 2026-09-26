@@ -38,9 +38,9 @@ class ApprovalGateway:
   except KeyError:return ApprovalVerdict(False,"approval not found")
   return ApprovalVerdict(ok,"consumed" if ok else "approval cannot be consumed")
 
- def reserve_operation(self,approval_id:str,operation_id:str,task_id:str|None=None,action:str|None=None,amount:Decimal|None=None,currency:str|None=None)->ApprovalVerdict:
+ def reserve_operation(self,approval_id:str,operation_id:str,task_id:str|None=None,action:str|None=None,amount:Decimal|None=None,currency:str|None=None,request_fingerprint:str|None=None)->ApprovalVerdict:
   verdict=self.check(approval_id,task_id=task_id,action=action,amount=amount,currency=currency,operation_id=operation_id)
   if not verdict.allowed:return verdict
   if self.store.store is None:return ApprovalVerdict(False,"persistent approval store required for atomic operation authorization")
-  ok=self.store.consume_and_reserve_operation(approval_id,operation_id,task_id=task_id,action=action,amount=amount,currency=currency)
+  ok=self.store.consume_and_reserve_operation(approval_id,operation_id,task_id=task_id,action=action,amount=amount,currency=currency,request_fingerprint=request_fingerprint)
   return ApprovalVerdict(ok,"approval consumed and operation reserved" if ok else "operation authorization conflict")
