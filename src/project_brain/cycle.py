@@ -23,11 +23,23 @@ class ProjectCycle:
  async def run_once(self,state:dict,executor_name:str,approval_id:str|None=None)->CycleOutcome:
   request=await self.planner.next_request(state)
   if request is None:return CycleOutcome(state,None,None,None,"idle")
-  reserved_by_approval=False\n  if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
+  reserved_by_approval=False
+  if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
    if self.approval_gateway is None:raise ApprovalRequired(f"Owner approval gateway required for task {request.task_id}")
-   verdict=self.approval_gateway.check(approval_id,request.task_id,request.goal)
+   if request.operation_id is None:raise ApprovalRequired("sensitive execution requires an operation id")
+   verdict=self.approval_gateway.check(approval_id,request.task_id,request.goal,operation_id=request.operation_id)
    if not verdict.allowed:raise ApprovalRequired(verdict.reason)
-  result=await self.router.execute_reserved(executor_name,request) if reserved_by_approval else await self.router.execute(executor_name,request)
+   if getattr(self.router,"idempotency",None) is not None and self.approval_gateway.store.store is not None:
+    reserved=self.approval_gateway.reserve_operation(approval_id,request.operation_id)
+    if not reserved.allowed:raise ApprovalRequired(reserved.reason)
+    reserved_by_approval=True
+   else:
+    consumed=self.approval_gateway.consume(approval_id,operation_id=request.operation_id)
+    if not consumed.allowed:raise ApprovalRequired(consumed.reason)
+  if reserved_by_approval:
+   result=await self.router.execute_reserved(executor_name,request)
+  else:
+   result=await self.router.execute(executor_name,request)
   verification=await self.verifier.verify(request,result)
   new_state=await self.planner.learn(state,request,result,verification)
   return CycleOutcome(new_state,request,result,verification,"accepted" if verification.accepted else "rejected")
