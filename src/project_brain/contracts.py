@@ -29,6 +29,9 @@ class Evidence(BaseModel):
     uri: str | None = None
     content: Any | None = None
     source: str
+    content_hash: str | None = None
+    strength: str = "weak"
+    collected_at: str | None = None
 
 class ExecutionResult(BaseModel):
     task_id: str
