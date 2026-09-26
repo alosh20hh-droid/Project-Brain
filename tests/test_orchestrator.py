@@ -32,3 +32,24 @@ def test_approval_block_is_persisted_instead_of_leaving_run_running(tmp_path):
  state=asyncio.run(Orchestrator(BlockedCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,cfg).run({"safe":True}))
  assert state["safe"] is True
  assert services.runs.get("blocked").status=="blocked_approval"
+
+
+class AlwaysActiveCycle:
+ async def run_once(self,state,executor_name,approval_id=None):
+  return CycleOutcome(state={**state,"ticks":state.get("ticks",0)+1},request=None,result=None,verification=None,status="accepted")
+
+def test_cycle_limit_is_explicitly_persisted(tmp_path):
+ db=tmp_path/"limit.db";services=bootstrap(db)
+ cfg=OrchestratorConfig(project_id="p",run_id="limit",executor_name="test",max_cycles=2)
+ state=asyncio.run(Orchestrator(AlwaysActiveCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,cfg).run({"ticks":0}))
+ assert state["ticks"]==2
+ assert services.runs.get("limit").status=="cycle_limit"
+
+def test_run_id_cannot_be_reused_for_another_project(tmp_path):
+ db=tmp_path/"runs.db";services=bootstrap(db)
+ first=OrchestratorConfig(project_id="p1",run_id="same",executor_name="test",max_cycles=1)
+ asyncio.run(Orchestrator(AlwaysActiveCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,first).run({}))
+ second=OrchestratorConfig(project_id="p2",run_id="same",executor_name="test",max_cycles=1)
+ import pytest
+ with pytest.raises(ValueError,match="different project"):
+  asyncio.run(Orchestrator(AlwaysActiveCycle(),services.projects,services.runs,services.events,services.heartbeats,services.leases,second).run({}))
