@@ -20,6 +20,8 @@ class ExecutionRouter:
   key=request.operation_id or request.task_id
   current=self.idempotency.status(key)
   if current is None or current.get("status")!="reserved":raise ReconciliationRequired(f"operation {key} is not reserved")
+  if current.get("task_id") is not None and current.get("task_id")!=request.task_id:raise ReconciliationRequired(f"operation {key} belongs to a different task")
+  if current.get("action") is not None and current.get("action")!=request.goal:raise ReconciliationRequired(f"operation {key} belongs to a different action")
   result=await self._run(name,request)
   self.idempotency.complete(key,result_ref=result.task_id)
   return result
