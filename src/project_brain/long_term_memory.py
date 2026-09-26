@@ -2,6 +2,8 @@ from __future__ import annotations
 from datetime import datetime,timezone
 from typing import Any
 from .persistence import SQLiteProjectStore
+from .evidence import EvidenceStore,EvidenceStrength
+from .evidence.integrity import verify_hash
 import json
 from pydantic import BaseModel,Field,model_validator
 
@@ -27,8 +29,15 @@ class MemoryItem(BaseModel):
   return self
 
 class LongTermMemory:
- def __init__(self,store:SQLiteProjectStore|None=None)->None:self._items:dict[str,MemoryItem]={};self.store=store
+ def __init__(self,store:SQLiteProjectStore|None=None,evidence:EvidenceStore|None=None)->None:self._items:dict[str,MemoryItem]={};self.store=store;self.evidence=evidence
  def add(self,item:MemoryItem)->None:
+  if item.kind in TRUSTED_KINDS and self.evidence is not None:
+   for ref in item.evidence_refs:
+    try:record=self.evidence.get(ref)
+    except KeyError as exc:raise ValueError(f"trusted memory references missing evidence: {ref}") from exc
+    if record.strength==EvidenceStrength.WEAK:raise ValueError(f"trusted memory references weak evidence: {ref}")
+    if record.payload is not None and (not record.content_hash or not verify_hash(record.payload,record.content_hash)):
+     raise ValueError(f"trusted memory references invalid evidence: {ref}")
   if self.store:
    if self.store.get("memory",item.id) is not None:raise ValueError(f"duplicate memory id: {item.id}")
   elif item.id in self._items:raise ValueError(f"duplicate memory id: {item.id}")
