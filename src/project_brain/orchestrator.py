@@ -40,6 +40,9 @@ class Orchestrator:
    self.runs.save(RunRecord(self.config.run_id,self.config.project_id,outcome.status,str(index)))
    self.events.publish(Event("orchestrator.cycle.finished",{"run_id":self.config.run_id,"index":index,"status":outcome.status}))
    if outcome.status=="idle":break
+  else:
+   self.runs.save(RunRecord(self.config.run_id,self.config.project_id,"cycle_limit",str(self.config.max_cycles)))
+   self.events.publish(Event("orchestrator.cycle_limit",{"run_id":self.config.run_id,"max_cycles":self.config.max_cycles}))
   return state
 
  def health(self)->dict[str,Any]:
