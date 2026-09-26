@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime,timezone
+from datetime import datetime,timezone\nimport json
 from project_brain.persistence import SQLiteProjectStore
 from .types import ApprovalRequest,ApprovalStatus
 
@@ -28,6 +28,20 @@ class ApprovalStore:
   item=self.get(item_id)
   if item.status in {ApprovalStatus.REJECTED,ApprovalStatus.EXPIRED}:return item
   item.status=ApprovalStatus.EXPIRED;self._save(item);return item
+ def consume_and_reserve_operation(self,item_id:str,operation_id:str)->bool:
+  if not self.store:return False
+  now=datetime.now(timezone.utc).isoformat()
+  with self.store.connect() as db:
+   db.execute("BEGIN IMMEDIATE")
+   row=db.execute("SELECT value_json FROM kv WHERE namespace='approval' AND key=?",(item_id,)).fetchone()
+   if row is None:return False
+   item=ApprovalRequest.model_validate(json.loads(row[0]))
+   if item.status!=ApprovalStatus.APPROVED or item.operation_id!=operation_id:return False
+   if db.execute("SELECT 1 FROM kv WHERE namespace='approval_consumed' AND key=?",(item_id,)).fetchone():return False
+   if db.execute("SELECT 1 FROM kv WHERE namespace='idempotency' AND key=?",(operation_id,)).fetchone():return False
+   db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('approval_consumed',?,?)",(item_id,json.dumps({"consumed_at":now},sort_keys=True)))
+   db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('idempotency',?,?)",(operation_id,json.dumps({"status":"reserved"},sort_keys=True)))
+   return True
  def consumed(self,item_id:str)->bool:
   if self.store:return self.store.get("approval_consumed",item_id) is not None
   return item_id in self._consumed
