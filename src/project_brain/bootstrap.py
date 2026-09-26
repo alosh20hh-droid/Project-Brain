@@ -17,8 +17,8 @@ class RuntimeServices:
   self.approval_store=ApprovalStore(self.projects)
   self.approvals=ApprovalGateway(self.approval_store)
   self.execution=ExecutionRouter(self.idempotency)
-  self.evidence=EvidenceStore(self.projects)
-  self.memory=LongTermMemory(self.projects)
+  self.evidence=EvidenceStore()
+  self.memory=LongTermMemory()
   self.heartbeats=HeartbeatMonitor(store=self.projects)
   self.leases=LeaseManager(store=self.projects)
 
