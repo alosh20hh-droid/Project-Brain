@@ -4,6 +4,10 @@ import json
 from project_brain.persistence import SQLiteProjectStore
 from .types import ApprovalRequest,ApprovalStatus
 
+def _expiry(value:str)->datetime:
+ dt=datetime.fromisoformat(value)
+ return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+
 class ApprovalStore:
  def __init__(self,store:SQLiteProjectStore|None=None)->None:self._items:dict[str,ApprovalRequest]={};self._consumed:set[str]=set();self.store=store
  def create(self,item:ApprovalRequest)->None:
@@ -40,7 +44,7 @@ class ApprovalStore:
    if item.status!=ApprovalStatus.APPROVED or item.operation_id!=operation_id:return False
    if task_id is not None and item.task_id!=task_id:return False
    if action is not None and item.action!=action:return False
-   if item.expires_at and datetime.fromisoformat(item.expires_at)<=now:return False
+   if item.expires_at and _expiry(item.expires_at)<=now:return False
    if db.execute("SELECT 1 FROM kv WHERE namespace='approval_consumed' AND key=?",(item_id,)).fetchone():return False
    if db.execute("SELECT 1 FROM kv WHERE namespace='idempotency' AND key=?",(operation_id,)).fetchone():return False
    db.execute("INSERT INTO kv(namespace,key,value_json) VALUES('approval_consumed',?,?)",(item_id,json.dumps({"consumed_at":now.isoformat()},sort_keys=True)))
@@ -52,7 +56,7 @@ class ApprovalStore:
  def consume(self,item_id:str)->bool:
   item=self.get(item_id)
   if item.status!=ApprovalStatus.APPROVED:return False
-  if item.expires_at and datetime.fromisoformat(item.expires_at)<=datetime.now(timezone.utc):return False
+  if item.expires_at and _expiry(item.expires_at)<=datetime.now(timezone.utc):return False
   if self.store:return self.store.put_if_absent("approval_consumed",item_id,{"consumed_at":datetime.now(timezone.utc).isoformat()})
   if item_id in self._consumed:return False
   self._consumed.add(item_id);return True
