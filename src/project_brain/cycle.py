@@ -23,11 +23,11 @@ class ProjectCycle:
  async def run_once(self,state:dict,executor_name:str,approval_id:str|None=None)->CycleOutcome:
   request=await self.planner.next_request(state)
   if request is None:return CycleOutcome(state,None,None,None,"idle")
-  if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
+  reserved_by_approval=False\n  if request.risk in {RiskLevel.SENSITIVE,RiskLevel.IRREVERSIBLE}:
    if self.approval_gateway is None:raise ApprovalRequired(f"Owner approval gateway required for task {request.task_id}")
    verdict=self.approval_gateway.check(approval_id,request.task_id,request.goal)
    if not verdict.allowed:raise ApprovalRequired(verdict.reason)
-  result=await self.router.execute(executor_name,request)
+  result=await self.router.execute_reserved(executor_name,request) if reserved_by_approval else await self.router.execute(executor_name,request)
   verification=await self.verifier.verify(request,result)
   new_state=await self.planner.learn(state,request,result,verification)
   return CycleOutcome(new_state,request,result,verification,"accepted" if verification.accepted else "rejected")
